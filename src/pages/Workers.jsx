@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 function Workers() {
-  const API = `http://${window.location.hostname}:5001/api/workers`;
+  const API = "https://buildtrack-3ccw.onrender.com";
 
   const [workers, setWorkers] = useState([]);
   const [showForm, setShowForm] = useState(false);
