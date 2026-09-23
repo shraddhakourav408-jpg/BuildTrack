@@ -1,7 +1,20 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 function Attendance() {
-  const API = `http://${window.location.hostname}:5001/api`;
+  // =====================================================
+  // PRODUCTION BACKEND API
+  // =====================================================
+
+  const API =
+    "https://buildtrack-3ccw.onrender.com/api";
+
+  // =====================================================
+  // TODAY
+  // =====================================================
 
   const getToday = () => {
     const today = new Date();
@@ -10,12 +23,16 @@ function Attendance() {
       today.getTimezoneOffset();
 
     return new Date(
-      today.getTime() - offset * 60000
+      today.getTime() -
+        offset * 60000
     )
       .toISOString()
       .split("T")[0];
   };
 
+  // =====================================================
+  // STATES
+  // =====================================================
 
   const [date, setDate] =
     useState(getToday());
@@ -41,14 +58,12 @@ function Attendance() {
   const [saving, setSaving] =
     useState(null);
 
-
   // =====================================================
   // DATE HELPERS
   // =====================================================
 
   const currentMonth =
     date.substring(0, 7);
-
 
   const formatDate = (value) => {
     const d = new Date(value);
@@ -62,7 +77,6 @@ function Attendance() {
       }
     );
   };
-
 
   const changeDate = (days) => {
     const current =
@@ -78,7 +92,7 @@ function Attendance() {
     const formatted =
       new Date(
         current.getTime() -
-        offset * 60000
+          offset * 60000
       )
         .toISOString()
         .split("T")[0];
@@ -86,16 +100,16 @@ function Attendance() {
     setDate(formatted);
   };
 
-
   // =====================================================
   // LOAD WORKERS
   // =====================================================
 
   const loadWorkers = async () => {
     try {
-
       const response =
-        await fetch(`${API}/workers`);
+        await fetch(
+          `${API}/workers`
+        );
 
       if (!response.ok) {
         throw new Error(
@@ -106,11 +120,16 @@ function Attendance() {
       const data =
         await response.json();
 
-      setWorkers(data);
-
+      setWorkers(
+        Array.isArray(data)
+          ? data
+          : []
+      );
     } catch (error) {
-
-      console.error(error);
+      console.error(
+        "Workers API error:",
+        error
+      );
 
       alert(
         "Workers load nahi ho paaye."
@@ -118,16 +137,13 @@ function Attendance() {
     }
   };
 
-
   // =====================================================
   // LOAD MONTHLY ATTENDANCE
   // =====================================================
 
   const loadMonthlyAttendance =
     async (month) => {
-
       try {
-
         const response =
           await fetch(
             `${API}/attendance?month=${month}`
@@ -142,11 +158,16 @@ function Attendance() {
         const data =
           await response.json();
 
-        setMonthlyAttendance(data);
-
+        setMonthlyAttendance(
+          Array.isArray(data)
+            ? data
+            : []
+        );
       } catch (error) {
-
-        console.error(error);
+        console.error(
+          "Monthly attendance error:",
+          error
+        );
 
         alert(
           "Monthly attendance load nahi ho rahi."
@@ -154,16 +175,13 @@ function Attendance() {
       }
     };
 
-
   // =====================================================
-  // LOAD SELECTED DATE
+  // LOAD SELECTED DATE ATTENDANCE
   // =====================================================
 
   const loadAttendance =
     async (selectedDate) => {
-
       try {
-
         setLoading(true);
 
         const response =
@@ -180,31 +198,29 @@ function Attendance() {
         const data =
           await response.json();
 
-
         const map = {};
 
-        data.forEach((item) => {
-          map[item.workerId] =
-            item;
-        });
-
+        if (Array.isArray(data)) {
+          data.forEach((item) => {
+            map[item.workerId] =
+              item;
+          });
+        }
 
         setAttendance(map);
-
       } catch (error) {
-
-        console.error(error);
+        console.error(
+          "Attendance API error:",
+          error
+        );
 
         alert(
           "Attendance load nahi ho rahi."
         );
-
       } finally {
-
         setLoading(false);
       }
     };
-
 
   // =====================================================
   // INITIAL LOAD
@@ -214,21 +230,17 @@ function Attendance() {
     loadWorkers();
   }, []);
 
-
   // =====================================================
   // DATE CHANGE
   // =====================================================
 
   useEffect(() => {
-
     loadAttendance(date);
 
     loadMonthlyAttendance(
       date.substring(0, 7)
     );
-
   }, [date]);
-
 
   // =====================================================
   // SAVE ATTENDANCE
@@ -238,15 +250,11 @@ function Attendance() {
     worker,
     changes
   ) => {
-
     try {
-
       setSaving(worker._id);
-
 
       const old =
         attendance[worker._id] || {};
-
 
       const body = {
         workerId:
@@ -260,16 +268,17 @@ function Attendance() {
           "Present",
 
         checkIn:
-          changes.checkIn !== undefined
+          changes.checkIn !==
+          undefined
             ? changes.checkIn
             : old.checkIn || "",
 
         checkOut:
-          changes.checkOut !== undefined
+          changes.checkOut !==
+          undefined
             ? changes.checkOut
             : old.checkOut || "",
       };
-
 
       const response =
         await fetch(
@@ -287,21 +296,17 @@ function Attendance() {
           }
         );
 
-
       const data =
         await response.json();
 
-
       if (!response.ok) {
-
         alert(
           data.error ||
-          "Attendance save nahi hui."
+            "Attendance save nahi hui."
         );
 
         return;
       }
-
 
       setAttendance(
         (prev) => ({
@@ -311,11 +316,9 @@ function Attendance() {
         })
       );
 
-
       // Update monthly records
       setMonthlyAttendance(
         (prev) => {
-
           const filtered =
             prev.filter(
               (item) =>
@@ -333,21 +336,19 @@ function Attendance() {
           ];
         }
       );
-
     } catch (error) {
-
-      console.error(error);
+      console.error(
+        "Save attendance error:",
+        error
+      );
 
       alert(
         "Server connection failed."
       );
-
     } finally {
-
       setSaving(null);
     }
   };
-
 
   // =====================================================
   // STATUS
@@ -357,7 +358,6 @@ function Attendance() {
     worker,
     status
   ) => {
-
     saveAttendance(
       worker,
       {
@@ -366,13 +366,11 @@ function Attendance() {
     );
   };
 
-
   // =====================================================
   // CHECK IN
   // =====================================================
 
   const checkIn = (worker) => {
-
     const now =
       new Date();
 
@@ -385,7 +383,6 @@ function Attendance() {
       String(
         now.getMinutes()
       ).padStart(2, "0");
-
 
     saveAttendance(
       worker,
@@ -402,13 +399,11 @@ function Attendance() {
     );
   };
 
-
   // =====================================================
   // CHECK OUT
   // =====================================================
 
   const checkOut = (worker) => {
-
     const now =
       new Date();
 
@@ -421,7 +416,6 @@ function Attendance() {
       String(
         now.getMinutes()
       ).padStart(2, "0");
-
 
     saveAttendance(
       worker,
@@ -438,18 +432,15 @@ function Attendance() {
     );
   };
 
-
   // =====================================================
-  // FILTER
+  // FILTER WORKERS
   // =====================================================
 
   const filteredWorkers =
     workers.filter(
       (worker) => {
-
         const searchText =
           search.toLowerCase();
-
 
         const matchesSearch =
           worker.name
@@ -461,8 +452,9 @@ function Attendance() {
             ?.toLowerCase()
             .includes(
               searchText
-            );
-
+            ) ||
+          worker.phone
+            ?.includes(search);
 
         const matchesSite =
           siteFilter ===
@@ -470,14 +462,12 @@ function Attendance() {
           worker.site ===
             siteFilter;
 
-
         return (
           matchesSearch &&
           matchesSite
         );
       }
     );
-
 
   // =====================================================
   // TODAY STATS
@@ -488,38 +478,36 @@ function Attendance() {
       (worker) =>
         attendance[
           worker._id
-        ]?.status === "Present"
+        ]?.status ===
+        "Present"
     ).length;
-
 
   const absent =
     workers.filter(
       (worker) =>
         attendance[
           worker._id
-        ]?.status === "Absent"
+        ]?.status ===
+        "Absent"
     ).length;
-
 
   const leave =
     workers.filter(
       (worker) =>
         attendance[
           worker._id
-        ]?.status === "Leave"
+        ]?.status ===
+        "Leave"
     ).length;
-
 
   const marked =
     present +
     absent +
     leave;
 
-
   const notMarked =
     workers.length -
     marked;
-
 
   // =====================================================
   // MONTHLY WORKER SUMMARY
@@ -527,17 +515,14 @@ function Attendance() {
 
   const monthlySummary =
     useMemo(() => {
-
       return workers.map(
         (worker) => {
-
           const records =
             monthlyAttendance.filter(
               (item) =>
                 item.workerId ===
                 worker._id
             );
-
 
           const presentCount =
             records.filter(
@@ -546,14 +531,12 @@ function Attendance() {
                 "Present"
             ).length;
 
-
           const absentCount =
             records.filter(
               (item) =>
                 item.status ===
                 "Absent"
             ).length;
-
 
           const leaveCount =
             records.filter(
@@ -562,12 +545,10 @@ function Attendance() {
                 "Leave"
             ).length;
 
-
           const total =
             presentCount +
             absentCount +
             leaveCount;
-
 
           const percentage =
             total > 0
@@ -577,7 +558,6 @@ function Attendance() {
                     100
                 )
               : 0;
-
 
           return {
             worker,
@@ -592,12 +572,10 @@ function Attendance() {
           };
         }
       );
-
     }, [
       workers,
       monthlyAttendance,
     ]);
-
 
   // =====================================================
   // MONTHLY TOTALS
@@ -605,15 +583,12 @@ function Attendance() {
 
   const monthlyTotals =
     useMemo(() => {
-
       let p = 0;
       let a = 0;
       let l = 0;
 
-
       monthlyAttendance.forEach(
         (item) => {
-
           if (
             item.status ===
             "Present"
@@ -634,20 +609,18 @@ function Attendance() {
           ) {
             l++;
           }
-
         }
       );
 
-
       const total =
         p + a + l;
-
 
       return {
         present: p,
         absent: a,
         leave: l,
         total,
+
         percentage:
           total > 0
             ? Math.round(
@@ -656,18 +629,15 @@ function Attendance() {
               )
             : 0,
       };
-
     }, [
       monthlyAttendance,
     ]);
-
 
   // =====================================================
   // EXPORT CSV
   // =====================================================
 
   const exportCSV = () => {
-
     const rows = [
       [
         "Worker",
@@ -680,10 +650,8 @@ function Attendance() {
       ],
     ];
 
-
     monthlySummary.forEach(
       (item) => {
-
         rows.push([
           item.worker.name,
           item.worker.role,
@@ -693,10 +661,8 @@ function Attendance() {
           item.leave,
           `${item.percentage}%`,
         ]);
-
       }
     );
-
 
     const csv =
       rows
@@ -716,7 +682,6 @@ function Attendance() {
         )
         .join("\n");
 
-
     const blob =
       new Blob(
         [csv],
@@ -726,12 +691,10 @@ function Attendance() {
         }
       );
 
-
     const url =
       URL.createObjectURL(
         blob
       );
-
 
     const link =
       document.createElement(
@@ -743,13 +706,20 @@ function Attendance() {
     link.download =
       `BuildTrack-Attendance-${currentMonth}.csv`;
 
+    document.body.appendChild(
+      link
+    );
+
     link.click();
+
+    document.body.removeChild(
+      link
+    );
 
     URL.revokeObjectURL(
       url
     );
   };
-
 
   // =====================================================
   // RENDER
@@ -763,7 +733,6 @@ function Attendance() {
       <div className="attendance-header">
 
         <div>
-
           <p className="attendance-label">
             WORKFORCE MANAGEMENT
           </p>
@@ -776,12 +745,9 @@ function Attendance() {
             Track daily worker attendance
             across your construction sites.
           </p>
-
         </div>
 
-
         <div className="attendance-date">
-
           <label>
             Attendance Date
           </label>
@@ -795,11 +761,9 @@ function Attendance() {
               )
             }
           />
-
         </div>
 
       </div>
-
 
       {/* DATE NAVIGATION */}
 
@@ -813,11 +777,9 @@ function Attendance() {
           ← Previous Day
         </button>
 
-
         <strong>
           {formatDate(date)}
         </strong>
-
 
         <button
           onClick={() =>
@@ -826,7 +788,6 @@ function Attendance() {
         >
           Today
         </button>
-
 
         <button
           onClick={() =>
@@ -838,13 +799,11 @@ function Attendance() {
 
       </div>
 
-
       {/* TODAY STATISTICS */}
 
       <div className="attendance-stats">
 
         <div className="attendance-card">
-
           <div className="attendance-icon orange">
             👥
           </div>
@@ -856,12 +815,9 @@ function Attendance() {
           <h2>
             {workers.length}
           </h2>
-
         </div>
 
-
         <div className="attendance-card">
-
           <div className="attendance-icon green">
             ✓
           </div>
@@ -873,12 +829,9 @@ function Attendance() {
           <h2>
             {present}
           </h2>
-
         </div>
 
-
         <div className="attendance-card">
-
           <div className="attendance-icon red">
             ✕
           </div>
@@ -890,12 +843,9 @@ function Attendance() {
           <h2>
             {absent}
           </h2>
-
         </div>
 
-
         <div className="attendance-card">
-
           <div className="attendance-icon yellow">
             !
           </div>
@@ -907,12 +857,9 @@ function Attendance() {
           <h2>
             {leave}
           </h2>
-
         </div>
 
-
         <div className="attendance-card">
-
           <div className="attendance-icon orange">
             %
           </div>
@@ -928,13 +875,11 @@ function Attendance() {
           <small>
             {notMarked} not marked
           </small>
-
         </div>
 
       </div>
 
-
-      {/* SEARCH */}
+      {/* SEARCH / FILTER */}
 
       <div className="attendance-toolbar">
 
@@ -949,7 +894,6 @@ function Attendance() {
           }
         />
 
-
         <select
           value={siteFilter}
           onChange={(e) =>
@@ -958,7 +902,6 @@ function Attendance() {
             )
           }
         >
-
           <option>
             All Sites
           </option>
@@ -978,9 +921,7 @@ function Attendance() {
           <option>
             Site D
           </option>
-
         </select>
-
 
         <button
           onClick={exportCSV}
@@ -990,8 +931,7 @@ function Attendance() {
 
       </div>
 
-
-      {/* DAILY TABLE */}
+      {/* DAILY ATTENDANCE */}
 
       <div className="attendance-table-card">
 
@@ -1000,19 +940,19 @@ function Attendance() {
         </h2>
 
         {loading ? (
-
           <div className="no-workers">
             Loading attendance...
           </div>
-
+        ) : filteredWorkers.length ===
+          0 ? (
+          <div className="no-workers">
+            No workers found
+          </div>
         ) : (
-
           <table className="attendance-table">
 
             <thead>
-
               <tr>
-
                 <th>
                   WORKER
                 </th>
@@ -1044,11 +984,8 @@ function Attendance() {
                 <th>
                   ACTION
                 </th>
-
               </tr>
-
             </thead>
-
 
             <tbody>
 
@@ -1060,14 +997,11 @@ function Attendance() {
                       worker._id
                     ] || {};
 
-
                   const status =
                     record.status ||
                     "Not Marked";
 
-
                   return (
-
                     <tr
                       key={
                         worker._id
@@ -1075,13 +1009,12 @@ function Attendance() {
                     >
 
                       <td>
-
                         <div className="worker-name">
 
                           <div className="worker-avatar">
 
                             {worker.name
-                              .split(" ")
+                              ?.split(" ")
                               .map(
                                 (word) =>
                                   word[0]
@@ -1099,19 +1032,15 @@ function Attendance() {
                           </strong>
 
                         </div>
-
                       </td>
-
 
                       <td>
                         {worker.role}
                       </td>
 
-
                       <td>
                         {worker.site}
                       </td>
-
 
                       <td>
 
@@ -1147,36 +1076,27 @@ function Attendance() {
 
                       </td>
 
-
                       <td>
-
                         {record.checkIn ||
                           "—"}
-
                       </td>
 
-
                       <td>
-
                         {record.checkOut ||
                           "—"}
-
                       </td>
-
 
                       <td>
-
                         {record.workingHours ||
                           "0h 0m"}
-
                       </td>
-
 
                       <td>
 
                         <div className="attendance-actions">
 
                           <button
+                            type="button"
                             disabled={
                               saving ===
                               worker._id
@@ -1197,8 +1117,8 @@ function Attendance() {
                             Present
                           </button>
 
-
                           <button
+                            type="button"
                             disabled={
                               saving ===
                               worker._id
@@ -1219,8 +1139,8 @@ function Attendance() {
                             Absent
                           </button>
 
-
                           <button
+                            type="button"
                             disabled={
                               saving ===
                               worker._id
@@ -1241,52 +1161,79 @@ function Attendance() {
                             Leave
                           </button>
 
+                          <button
+                            type="button"
+                            disabled={
+                              saving ===
+                              worker._id
+                            }
+                            onClick={() =>
+                              checkIn(worker)
+                            }
+                            style={{
+                              background:
+                                "#2563eb",
+                              color:
+                                "white",
+                              border:
+                                "none",
+                              padding:
+                                "8px 12px",
+                              borderRadius:
+                                "6px",
+                              cursor:
+                                "pointer",
+                              fontWeight:
+                                "600",
+                              marginLeft:
+                                "5px",
+                            }}
+                          >
+                            {saving ===
+                            worker._id
+                              ? "Saving..."
+                              : "Check In"}
+                          </button>
 
                           <button
-  type="button"
-  disabled={saving === worker._id}
-  onClick={() => checkIn(worker)}
-  style={{
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "8px 12px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontWeight: "600",
-    marginLeft: "5px"
-  }}
->
-  {saving === worker._id
-    ? "Saving..."
-    : "Check In"}
-</button>
+                            type="button"
+                            disabled={
+                              saving ===
+                              worker._id
+                            }
+                            onClick={() =>
+                              checkOut(worker)
+                            }
+                            style={{
+                              background:
+                                "#7c3aed",
+                              color:
+                                "white",
+                              border:
+                                "none",
+                              padding:
+                                "8px 12px",
+                              borderRadius:
+                                "6px",
+                              cursor:
+                                "pointer",
+                              fontWeight:
+                                "600",
+                              marginLeft:
+                                "5px",
+                            }}
+                          >
+                            {saving ===
+                            worker._id
+                              ? "Saving..."
+                              : "Check Out"}
+                          </button>
 
-<button
-  type="button"
-  disabled={saving === worker._id}
-  onClick={() => checkOut(worker)}
-  style={{
-    background: "#7c3aed",
-    color: "white",
-    border: "none",
-    padding: "8px 12px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontWeight: "600",
-    marginLeft: "5px"
-  }}
->
-  {saving === worker._id
-    ? "Saving..."
-    : "Check Out"}
-</button>
                         </div>
 
                       </td>
 
                     </tr>
-
                   );
                 }
               )}
@@ -1294,11 +1241,9 @@ function Attendance() {
             </tbody>
 
           </table>
-
         )}
 
       </div>
-
 
       {/* MONTHLY SUMMARY */}
 
@@ -1306,7 +1251,8 @@ function Attendance() {
 
         <div
           style={{
-            display: "flex",
+            display:
+              "flex",
             justifyContent:
               "space-between",
             alignItems:
@@ -1328,18 +1274,16 @@ function Attendance() {
 
           </div>
 
-
           <div>
-
             <strong>
               Monthly Attendance:{" "}
-              {monthlyTotals.percentage}%
+              {
+                monthlyTotals.percentage
+              }%
             </strong>
-
           </div>
 
         </div>
-
 
         <table className="attendance-table">
 
@@ -1375,7 +1319,6 @@ function Attendance() {
 
           </thead>
 
-
           <tbody>
 
             {monthlySummary.map(
@@ -1394,7 +1337,7 @@ function Attendance() {
                       <div className="worker-avatar">
 
                         {item.worker.name
-                          .split(" ")
+                          ?.split(" ")
                           .map(
                             (word) =>
                               word[0]
@@ -1418,7 +1361,6 @@ function Attendance() {
 
                   </td>
 
-
                   <td>
                     {
                       item.worker
@@ -1426,30 +1368,24 @@ function Attendance() {
                     }
                   </td>
 
-
                   <td>
                     {item.present}
                   </td>
-
 
                   <td>
                     {item.absent}
                   </td>
 
-
                   <td>
                     {item.leave}
                   </td>
 
-
                   <td>
-
                     <strong>
                       {
                         item.percentage
                       }%
                     </strong>
-
                   </td>
 
                 </tr>
