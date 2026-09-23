@@ -22,7 +22,7 @@ function Workers() {
 
   // LOAD WORKERS
   useEffect(() => {
-    fetch(API)
+    fetch(`${API}/api/workers`)
       .then((res) => res.json())
       .then((data) => setWorkers(data))
       .catch((err) =>
