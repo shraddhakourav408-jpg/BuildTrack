@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 
 function Workers() {
+  // PRODUCTION BACKEND
   const API = "https://buildtrack-3ccw.onrender.com";
 
   const [workers, setWorkers] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingWorkerId, setEditingWorkerId] = useState(null);
 
   const [search, setSearch] = useState("");
   const [siteFilter, setSiteFilter] = useState("All Sites");
   const [statusFilter, setStatusFilter] = useState("All Status");
 
-  const [editingWorkerId, setEditingWorkerId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -20,107 +22,212 @@ function Workers() {
     status: "Active",
   });
 
+  // =========================
   // LOAD WORKERS
+  // =========================
   useEffect(() => {
-    fetch(`${API}/api/workers`)
-      .then((res) => res.json())
-      .then((data) => setWorkers(data))
-      .catch((err) =>
-        console.error("Failed to load workers:", err)
-      );
+    loadWorkers();
   }, []);
 
+  const loadWorkers = async () => {
+    try {
+      setLoading(true);
+
+      const response = await fetch(`${API}/api/workers`);
+
+      if (!response.ok) {
+        throw new Error("Failed to load workers");
+      }
+
+      const data = await response.json();
+
+      setWorkers(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to load workers:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =========================
   // FORM CHANGE
+  // =========================
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setForm({
       ...form,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
   };
 
-  // EDIT WORKER - EXISTING WORKER
+  // =========================
+  // RESET FORM
+  // =========================
+  const resetForm = () => {
+    setForm({
+      name: "",
+      role: "",
+      phone: "",
+      site: "Site A",
+      status: "Active",
+    });
+
+    setEditingWorkerId(null);
+  };
+
+  // =========================
+  // OPEN ADD FORM
+  // =========================
+  const openAddForm = () => {
+    resetForm();
+    setShowForm(true);
+  };
+
+  // =========================
+  // EDIT WORKER
+  // =========================
   const editWorker = (worker) => {
     setEditingWorkerId(worker._id);
 
     setForm({
-      name: worker.name,
-      role: worker.role,
-      phone: worker.phone,
-      site: worker.site,
-      status: worker.status,
+      name: worker.name || "",
+      role: worker.role || "",
+      phone: worker.phone || "",
+      site: worker.site || "Site A",
+      status: worker.status || "Active",
     });
 
     setShowForm(true);
   };
 
-  // UPDATE WORKER
-  const updateWorker = async () => {
-    if (!form.name || !form.role || !form.phone) {
-  alert("Please fill all required fields");
-  return;
-}
+  // =========================
+  // VALIDATION
+  // =========================
+  const validateForm = () => {
+    const name = form.name.trim();
+    const role = form.role.trim();
+    const phone = form.phone.trim();
 
-if (!/^[A-Za-z ]+$/.test(form.name)) {
-  alert("Worker Name should contain only letters");
-  return;
-}
+    if (!name || !role || !phone) {
+      alert("Please fill all required fields");
+      return false;
+    }
 
-if (!/^[A-Za-z ]+$/.test(form.role)) {
-  alert("Role should contain only letters");
-  return;
-}
+    if (!/^[A-Za-z ]+$/.test(name)) {
+      alert("Worker Name should contain only letters");
+      return false;
+    }
 
-if (!/^\d{10}$/.test(form.phone)) {
-  alert("Phone number must be exactly 10 digits");
-  return;
-}
+    if (!/^[A-Za-z ]+$/.test(role)) {
+      alert("Role should contain only letters");
+      return false;
+    }
+
+    if (!/^\d{10}$/.test(phone)) {
+      alert("Phone number must be exactly 10 digits");
+      return false;
+    }
+
+    return true;
+  };
+
+  // =========================
+  // ADD / UPDATE WORKER
+  // =========================
+  const saveWorker = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
     try {
-      const response = await fetch(
-        `${API}/${editingWorkerId}`,
-        {
-          method: "PUT",
+      setLoading(true);
+
+      let response;
+
+      // UPDATE
+      if (editingWorkerId) {
+        response = await fetch(
+          `${API}/api/workers/${editingWorkerId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: form.name.trim(),
+              role: form.role.trim(),
+              phone: form.phone.trim(),
+              site: form.site,
+              status: form.status,
+            }),
+          }
+        );
+      }
+
+      // ADD
+      else {
+        response = await fetch(`${API}/api/workers`, {
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(form),
-        }
-      );
+          body: JSON.stringify({
+            name: form.name.trim(),
+            role: form.role.trim(),
+            phone: form.phone.trim(),
+            site: form.site,
+            status: form.status,
+          }),
+        });
+      }
 
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Failed to update worker");
+        alert(
+          data.error ||
+            (editingWorkerId
+              ? "Failed to update worker"
+              : "Failed to add worker")
+        );
         return;
       }
 
-      setWorkers(
-        workers.map((worker) =>
-          worker._id === editingWorkerId
-            ? data
-            : worker
-        )
-      );
+      // UPDATE LOCAL LIST
+      if (editingWorkerId) {
+        setWorkers((prevWorkers) =>
+          prevWorkers.map((worker) =>
+            worker._id === editingWorkerId ? data : worker
+          )
+        );
 
-      setEditingWorkerId(null);
+        alert("Worker updated successfully!");
+      }
 
-      setForm({
-        name: "",
-        role: "",
-        phone: "",
-        site: "Site A",
-        status: "Active",
-      });
+      // ADD TO LOCAL LIST
+      else {
+        setWorkers((prevWorkers) => [
+          ...prevWorkers,
+          data,
+        ]);
 
+        alert("Worker added successfully!");
+      }
+
+      resetForm();
       setShowForm(false);
-
-      alert("Worker updated successfully!");
     } catch (error) {
+      console.error("Worker API error:", error);
       alert("Server connection failed");
-      console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // =========================
   // DELETE WORKER
+  // =========================
   const deleteWorker = async (worker) => {
     const confirmDelete = window.confirm(
       `Delete ${worker.name}?`
@@ -131,8 +238,10 @@ if (!/^\d{10}$/.test(form.phone)) {
     }
 
     try {
+      setLoading(true);
+
       const response = await fetch(
-        `${API}/${worker._id}`,
+        `${API}/api/workers/${worker._id}`,
         {
           method: "DELETE",
         }
@@ -145,86 +254,35 @@ if (!/^\d{10}$/.test(form.phone)) {
         return;
       }
 
-      setWorkers(
-        workers.filter(
+      setWorkers((prevWorkers) =>
+        prevWorkers.filter(
           (item) => item._id !== worker._id
         )
       );
 
       alert("Worker deleted successfully!");
     } catch (error) {
+      console.error("Delete worker error:", error);
       alert("Server connection failed");
-      console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ADD WORKER
-  const addWorker = async () => {
-    if (!form.name || !form.role || !form.phone) {
-  alert("Please fill all required fields");
-  return;
-}
-
-if (!/^[A-Za-z ]+$/.test(form.name)) {
-  alert("Worker Name should contain only letters");
-  return;
-}
-
-if (!/^[A-Za-z ]+$/.test(form.role)) {
-  alert("Role should contain only letters");
-  return;
-}
-
-if (!/^\d{10}$/.test(form.phone)) {
-  alert("Phone number must be exactly 10 digits");
-  return;
-}
-
-    try {
-      const response = await fetch(API, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.error || "Failed to add worker");
-        return;
-      }
-
-      setWorkers([...workers, data]);
-
-      setForm({
-        name: "",
-        role: "",
-        phone: "",
-        site: "Site A",
-        status: "Active",
-      });
-
-      setShowForm(false);
-
-      alert("Worker added successfully!");
-    } catch (error) {
-      alert("Server connection failed");
-      console.error(error);
-    }
-  };
-
+  // =========================
   // SEARCH + FILTER
+  // =========================
   const filteredWorkers = workers.filter((worker) => {
+    const searchText = search.toLowerCase();
+
     const matchesSearch =
-      worker.name
+      (worker.name || "")
         .toLowerCase()
-        .includes(search.toLowerCase()) ||
-      worker.role
+        .includes(searchText) ||
+      (worker.role || "")
         .toLowerCase()
-        .includes(search.toLowerCase()) ||
-      worker.phone.includes(search);
+        .includes(searchText) ||
+      (worker.phone || "").includes(search);
 
     const matchesSite =
       siteFilter === "All Sites" ||
@@ -241,77 +299,103 @@ if (!/^\d{10}$/.test(form.phone)) {
     );
   });
 
+  // =========================
+  // STATISTICS
+  // =========================
   const activeWorkers = workers.filter(
     (worker) => worker.status === "Active"
+  ).length;
+
+  const inactiveWorkers = workers.filter(
+    (worker) => worker.status === "Inactive"
   ).length;
 
   return (
     <div className="workers-page">
 
-      {/* HEADER */}
-      <div className="workers-header">
+      {/* ================= HEADER ================= */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "20px",
+          gap: "15px",
+          flexWrap: "wrap",
+        }}
+      >
         <div>
-          <p className="small-title">
-            WORKFORCE MANAGEMENT
-          </p>
-
           <h1>Workers</h1>
-
           <p>
-            Manage workers and their site assignments.
+            Manage construction site workers
           </p>
         </div>
 
         <button
-          className="add-worker-btn"
-          onClick={() => {
-            setEditingWorkerId(null);
-
-            setForm({
-              name: "",
-              role: "",
-              phone: "",
-              site: "Site A",
-              status: "Active",
-            });
-
-            setShowForm(true);
+          type="button"
+          onClick={openAddForm}
+          style={{
+            background: "#e8752a",
+            color: "white",
+            border: "none",
+            padding: "12px 20px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "600",
           }}
         >
           + Add Worker
         </button>
       </div>
 
-      {/* STATISTICS */}
-      <div className="worker-stats">
-
-        <div className="worker-stat-card">
-          <span>Total Workers</span>
+      {/* ================= STATS ================= */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: "15px",
+          marginBottom: "20px",
+        }}
+      >
+        <div className="stat-card">
+          <h3>Total Workers</h3>
           <h2>{workers.length}</h2>
         </div>
 
-        <div className="worker-stat-card">
-          <span>Active Workers</span>
+        <div className="stat-card">
+          <h3>Active Workers</h3>
           <h2>{activeWorkers}</h2>
         </div>
 
-        <div className="worker-stat-card">
-          <span>Active Sites</span>
-          <h2>4</h2>
+        <div className="stat-card">
+          <h3>Inactive Workers</h3>
+          <h2>{inactiveWorkers}</h2>
         </div>
-
       </div>
 
-      {/* SEARCH + FILTERS */}
-      <div className="worker-filters">
-
+      {/* ================= FILTERS ================= */}
+      <div
+        style={{
+          display: "flex",
+          gap: "10px",
+          flexWrap: "wrap",
+          marginBottom: "20px",
+        }}
+      >
         <input
           type="text"
-          placeholder="Search workers..."
+          placeholder="Search worker..."
           value={search}
           onChange={(e) =>
             setSearch(e.target.value)
           }
+          style={{
+            padding: "10px 12px",
+            border: "1px solid #ddd",
+            borderRadius: "7px",
+            minWidth: "220px",
+          }}
         />
 
         <select
@@ -319,12 +403,16 @@ if (!/^\d{10}$/.test(form.phone)) {
           onChange={(e) =>
             setSiteFilter(e.target.value)
           }
+          style={{
+            padding: "10px 12px",
+            border: "1px solid #ddd",
+            borderRadius: "7px",
+          }}
         >
           <option>All Sites</option>
           <option>Site A</option>
           <option>Site B</option>
           <option>Site C</option>
-          <option>Site D</option>
         </select>
 
         <select
@@ -332,199 +420,314 @@ if (!/^\d{10}$/.test(form.phone)) {
           onChange={(e) =>
             setStatusFilter(e.target.value)
           }
+          style={{
+            padding: "10px 12px",
+            border: "1px solid #ddd",
+            borderRadius: "7px",
+          }}
         >
           <option>All Status</option>
           <option>Active</option>
-          <option>On Leave</option>
+          <option>Inactive</option>
         </select>
-
       </div>
 
-      {/* WORKER TABLE */}
-      <div className="worker-table">
-
-        <div className="table-header">
-          <span>WORKER</span>
-          <span>ROLE</span>
-          <span>CONTACT</span>
-          <span>SITE</span>
-          <span>STATUS</span>
-          <span>ACTIONS</span>
-        </div>
-
-        {filteredWorkers.length > 0 ? (
-
-          filteredWorkers.map((worker) => (
-
-            <div
-              className="worker-row"
-              key={worker._id}
-            >
-
-              <div className="worker-name">
-
-                <div className="avatar">
-                  {worker.name
-                    .split(" ")
-                    .map((word) => word[0])
-                    .join("")
-                    .substring(0, 2)}
-                </div>
-
-                <strong>
-                  {worker.name}
-                </strong>
-
-              </div>
-
-              <span>{worker.role}</span>
-
-              <span>☎ {worker.phone}</span>
-
-              <span>{worker.site}</span>
-
-              <span>
-                <b
-                  className={
-                    worker.status === "Active"
-                      ? "status-active"
-                      : "status-leave"
-                  }
-                >
-                  {worker.status}
-                </b>
-              </span>
-
-              <div className="worker-actions">
-
-                <button
-                  onClick={() =>
-                    editWorker(worker)
-                  }
-                  className="edit-worker-btn"
-                >
-                  Edit
-                </button>
-
-                <button
-                  onClick={() =>
-                    deleteWorker(worker)
-                  }
-                  className="delete-worker-btn"
-                >
-                  Delete
-                </button>
-
-              </div>
-
-            </div>
-
-          ))
-
-        ) : (
-
-          <div className="no-workers">
+      {/* ================= WORKERS TABLE ================= */}
+      <div
+        style={{
+          background: "white",
+          borderRadius: "10px",
+          overflowX: "auto",
+        }}
+      >
+        {loading && workers.length === 0 ? (
+          <p
+            style={{
+              padding: "30px",
+              textAlign: "center",
+            }}
+          >
+            Loading workers...
+          </p>
+        ) : filteredWorkers.length === 0 ? (
+          <p
+            style={{
+              padding: "30px",
+              textAlign: "center",
+            }}
+          >
             No workers found
-          </div>
+          </p>
+        ) : (
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+            }}
+          >
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Phone</th>
+                <th>Site</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
 
+            <tbody>
+              {filteredWorkers.map((worker) => (
+                <tr key={worker._id}>
+                  <td>{worker.name}</td>
+                  <td>{worker.role}</td>
+                  <td>{worker.phone}</td>
+                  <td>{worker.site}</td>
+
+                  <td>
+                    <span
+                      style={{
+                        padding: "5px 10px",
+                        borderRadius: "15px",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {worker.status}
+                    </span>
+                  </td>
+
+                  <td>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        editWorker(worker)
+                      }
+                      style={{
+                        marginRight: "8px",
+                        padding: "7px 12px",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        deleteWorker(worker)
+                      }
+                      style={{
+                        padding: "7px 12px",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
-
       </div>
 
-      {/* ADD / EDIT WORKER MODAL */}
+      {/* ================= ADD / EDIT MODAL ================= */}
       {showForm && (
-
-        <div className="modal-overlay">
-
-          <div className="worker-modal">
-
-            <button
-              className="close-btn"
-              onClick={() => {
-                setShowForm(false);
-                setEditingWorkerId(null);
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "white",
+              width: "100%",
+              maxWidth: "520px",
+              borderRadius: "15px",
+              padding: "25px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+          >
+            {/* MODAL HEADER */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "20px",
               }}
             >
-              ×
-            </button>
+              <h2>
+                {editingWorkerId
+                  ? "Edit Worker"
+                  : "Add Worker"}
+              </h2>
 
-            <h2>
-              {editingWorkerId
-                ? "Edit Worker"
-                : "Add Worker"}
-            </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setShowForm(false);
+                }}
+                style={{
+                  border: "none",
+                  background: "#f1f1f1",
+                  width: "35px",
+                  height: "35px",
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                  fontSize: "18px",
+                }}
+              >
+                ×
+              </button>
+            </div>
 
+            {/* WORKER NAME */}
             <label>Worker Name</label>
 
             <input
+              type="text"
               name="name"
               value={form.name}
               onChange={handleChange}
               placeholder="Enter worker name"
+              style={{
+                width: "100%",
+                padding: "12px",
+                marginTop: "7px",
+                marginBottom: "15px",
+                border: "1px solid #ddd",
+                borderRadius: "7px",
+                boxSizing: "border-box",
+              }}
             />
 
+            {/* ROLE */}
             <label>Role</label>
 
             <input
+              type="text"
               name="role"
               value={form.role}
               onChange={handleChange}
               placeholder="Enter role"
+              style={{
+                width: "100%",
+                padding: "12px",
+                marginTop: "7px",
+                marginBottom: "15px",
+                border: "1px solid #ddd",
+                borderRadius: "7px",
+                boxSizing: "border-box",
+              }}
             />
 
+            {/* PHONE */}
             <label>Phone</label>
 
             <input
-  name="phone"
-  value={form.phone}
-  onChange={handleChange}
-  placeholder="Enter 10 digit phone number"
-  maxLength="10"
-/>
+              type="tel"
+              name="phone"
+              value={form.phone}
+              onChange={handleChange}
+              placeholder="10 digit phone number"
+              maxLength="10"
+              style={{
+                width: "100%",
+                padding: "12px",
+                marginTop: "7px",
+                marginBottom: "15px",
+                border: "1px solid #ddd",
+                borderRadius: "7px",
+                boxSizing: "border-box",
+              }}
+            />
 
+            {/* SITE */}
             <label>Site</label>
 
             <select
               name="site"
               value={form.site}
               onChange={handleChange}
+              style={{
+                width: "100%",
+                padding: "12px",
+                marginTop: "7px",
+                marginBottom: "15px",
+                border: "1px solid #ddd",
+                borderRadius: "7px",
+                boxSizing: "border-box",
+              }}
             >
               <option>Site A</option>
               <option>Site B</option>
               <option>Site C</option>
-              <option>Site D</option>
             </select>
 
+            {/* STATUS */}
             <label>Status</label>
 
             <select
               name="status"
               value={form.status}
               onChange={handleChange}
+              style={{
+                width: "100%",
+                padding: "12px",
+                marginTop: "7px",
+                marginBottom: "20px",
+                border: "1px solid #ddd",
+                borderRadius: "7px",
+                boxSizing: "border-box",
+              }}
             >
               <option>Active</option>
-              <option>On Leave</option>
+              <option>Inactive</option>
             </select>
 
+            {/* SAVE BUTTON */}
             <button
-              className="submit-worker-btn"
-              onClick={
-                editingWorkerId
-                  ? updateWorker
-                  : addWorker
-              }
+              type="button"
+              disabled={loading}
+              onClick={saveWorker}
+              style={{
+                width: "100%",
+                background: "#e8752a",
+                color: "white",
+                border: "none",
+                padding: "13px",
+                borderRadius: "8px",
+                cursor: loading
+                  ? "not-allowed"
+                  : "pointer",
+                fontWeight: "600",
+                fontSize: "15px",
+              }}
             >
-              {editingWorkerId
+              {loading
+                ? "Saving..."
+                : editingWorkerId
                 ? "Update Worker"
                 : "Add Worker"}
             </button>
-
           </div>
-
         </div>
-
       )}
-
     </div>
   );
 }
