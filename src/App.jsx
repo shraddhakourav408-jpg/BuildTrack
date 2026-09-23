@@ -198,10 +198,9 @@ function App() {
 
     try {
 
-      const response =
-        await fetch(
-          `${API}${endpoint}`
-        );
+     const response = await fetch(`${API}${endpoint}`,
+
+      );
 
       if (!response.ok) {
         return [];
