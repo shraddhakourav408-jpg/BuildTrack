@@ -9,8 +9,8 @@ import {
 } from "lucide-react";
 
 function Vehicles() {
-  const API = `http://${window.location.hostname}:5001/api/vehicles`;
-  const WORKER_API = `http://${window.location.hostname}:5001/api/workers`;
+  const API = "https://buildtrack-3ccw.onrender.com/api/vehicles";
+  const WORKER_API = "https://buildtrack-3ccw.onrender.com/api/workers";
 
   const [vehicles, setVehicles] = useState([]);
   const [workers, setWorkers] = useState([]);

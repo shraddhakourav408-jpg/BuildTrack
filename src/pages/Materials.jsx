@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const API = `http://${window.location.hostname}:5001/api`;
+const API = "https://buildtrack-3ccw.onrender.com/api";
 
 const emptyMaterial = {
   name: "",

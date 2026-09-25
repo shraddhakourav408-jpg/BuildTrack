@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const API =
-  `http://${window.location.hostname}:5001/api`;
+  "https://buildtrack-3ccw.onrender.com/api";
 
 function Dashboard({ setActivePage }) {
   const [workers, setWorkers] = useState([]);

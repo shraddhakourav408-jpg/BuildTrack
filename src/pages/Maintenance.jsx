@@ -5,7 +5,7 @@ import React, {
 } from "react";
 
 const API =
-  `http://${window.location.hostname}:5001/api`;
+  "https://buildtrack-3ccw.onrender.com/api";
 
 const emptyForm = {
   vehicleId: "",

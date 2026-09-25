@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 function Fuel() {
-  const API = `http://${window.location.hostname}:5001`;
+  const API = "https://buildtrack-3ccw.onrender.com";
 
   const [vehicles, setVehicles] = useState([]);
   const [records, setRecords] = useState([]);
